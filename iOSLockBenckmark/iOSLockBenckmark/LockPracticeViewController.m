@@ -153,7 +153,7 @@
         RecursiveBlock = ^(int value) {
             pthread_mutex_lock(&mutex);
             if (value > 0) {
-                NSLog(@"value: %d", value);
+                NSLog(@"线程: %d", value);
                 RecursiveBlock(value-1);
             }
         };
@@ -194,20 +194,134 @@
     
 }
 
+/**
+ 条件锁，condition可以理解为条件标示
+ NSConditionLock 借助 NSCondition 来实现，它的本质就是一个生产者-消费者模型。“条件被满足”可以理解为生产者提供了新的内容。
+ */
 - (IBAction)NSConditionLock:(id)sender {
+    NSConditionLock *clock = [[NSConditionLock alloc] initWithCondition:0];
+    
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSLog(@"线程1");
+        if ([clock tryLockWhenCondition:0]) {
+            NSLog(@"线程1 加锁");
+            sleep(3);
+            [clock unlockWithCondition:1];
+            NSLog(@"线程1 解锁");
+        } else {
+            NSLog(@"失败");
+        }
+    });
+    
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSLog(@"线程2");
+        [clock lockWhenCondition:3];
+        NSLog(@"线程2 加锁");
+        sleep(3);
+        [clock unlockWithCondition:2];
+        NSLog(@"线程2 解锁");
+    });
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSLog(@"线程3");
+        [clock lockWhenCondition:1];
+        NSLog(@"线程3 加锁");
+        sleep(3);
+        [clock unlockWithCondition:3];
+        NSLog(@"线程3 解锁");
+    });
     
 }
 
+/**
+ 归锁也是通过 pthread_mutex_lock 函数来实现，在函数内部会判断锁的类型，如果显示是递归锁，就允许递归调用，仅仅将一个计数器加一，锁的释放过程也是同理。
+ NSRecursiveLock 与 NSLock 的区别在于内部封装的 pthread_mutex_t 对象的类型不同，前者的类型为 PTHREAD_MUTEX_RECURSIVE。
+ */
 - (IBAction)NSRecursiveLock:(id)sender {
+//    NSLock *lock = [NSLock new];  //会造成死锁
+    NSRecursiveLock *lock = [NSRecursiveLock new];
     
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        static void (^RecursiveBlock)(int);
+        RecursiveBlock = ^(int value) {
+            [lock lock];
+            if (value > 0) {
+                NSLog(@"线程：%d",value);
+                RecursiveBlock(value - 1);
+            }
+            [lock unlock];
+        };
+    });
 }
 
+/**
+ NSCondition其实是封装了一个互斥锁和条件变量
+ 
+ wait：进入等待状态
+ waitUntilDate:：让一个线程等待一定的时间
+ signal：唤醒一个等待的线程
+ broadcast：唤醒所有等待的线程
+ */
 - (IBAction)NSCondition:(id)sender {
+    NSCondition *condition = [[NSCondition alloc] init];
     
+    //线程等待2s后解锁
+//    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+//        NSLog(@"线程1 start");
+//        [condition lock];
+//        [condition waitUntilDate:[NSDate dateWithTimeIntervalSinceNow:2]];
+//        [condition unlock];
+//        NSLog(@"线程1 解锁");
+//    });
+    
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        [condition lock];
+        NSLog(@"线程1加锁成功");
+        [condition wait];
+        NSLog(@"线程1");
+        [condition unlock];
+    });
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        [condition lock];
+        NSLog(@"线程2加锁成功");
+        [condition wait];
+        NSLog(@"线程2");
+        [condition unlock];
+    });
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        sleep(2);
+        NSLog(@"唤醒一个等待线程");
+        [condition signal];
+    });
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        sleep(5);
+        NSLog(@"唤醒所有等待线程");
+        [condition broadcast];
+    });
 }
 
+/**
+ 相关文档：
+    http://ios.jobbole.com/82826/
+    https://stackoverflow.com/questions/1215330/how-does-synchronized-lock-unlock-in-objective-c/6047218#6047218
+ 
+ */
 - (IBAction)synchronized:(id)sender {
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        @synchronized (self) {
+            sleep(2);
+            NSLog(@"线程1");
+        }
+    });
     
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        @synchronized (self) {
+            NSLog(@"线程2");
+        }
+    });
 }
 
 
