@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+	<dict>
+		<key>title</key>
+		<string>队列</string>
+		<key>children</key>
+		<array>
+			<dict>
+				<key>selector</key>
+				<string>testSerialqueue</string>
+				<key>title</key>
+				<string>串行队列</string>
+			</dict>
+			<dict>
+				<key>selector</key>
+				<string>testConcurrentqueue</string>
+				<key>title</key>
+				<string>并发队列</string>
+			</dict>
+			<dict>
+				<key>selector</key>
+				<string>testMainqueue</string>
+				<key>title</key>
+				<string>主队列</string>
+			</dict>
+		</array>
+	</dict>
+	<dict/>
+	<dict/>
+	<dict/>
+</array>
+</plist>
